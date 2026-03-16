@@ -20,5 +20,5 @@ def test_favorites(page: Page, logger, product_name: str, expected_favorite_name
 
     sofas_page.go_to_favorites()
 
-    expect(sofas_page.page.locator(f"text={expected_favorite_name}")).to_be_visible()
+    expect(sofas_page.page.locator(f"text={expected_favorite_name}")).to_be_visible() # Fix test
     logger.info(f"'{expected_favorite_name}' найден в Избранном!")

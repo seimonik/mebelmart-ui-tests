@@ -1,8 +1,27 @@
 import pytest
-from playwright.sync_api import Page, expect
+from playwright.sync_api import Page
+from pages.sofas_page import SofasPage
+from pages.sofa_details_page import SofaDetailsPage
 
-@pytest.mark.parametrize("sofa_name, expected_width", [("Диван Лидер", "2050")])
-def test_sofa_details(page: Page, sofa_name: str, expected_width: str):
+
+@pytest.mark.parametrize(
+    "sofa_name, expected_width, sofa_id",
+    [
+        (
+            "Диван Лидер",
+            "2050",
+            "id21cf4fa_divan_lider_meshkovina_rastsvetka_na_vyibor", # id из url'а
+        ),
+        (
+            "Диван разные расцветки",
+            "2200",
+            "idbf109a6_evroknijka_vyikatnaya_iskusstvennaya_zamsha_v-d"
+        )
+    ],
+)
+def test_sofa_details(
+    page: Page, logger, sofa_name: str, expected_width: str, sofa_id: str
+):
     """
     Проверка деталей товара в карточке дивана.
     Шаги:
@@ -11,24 +30,16 @@ def test_sofa_details(page: Page, sofa_name: str, expected_width: str):
     3. Проверить характеристики (ширина) в карточке товара.
     4. Убедиться, что значение совпадает с ожидаемым.
     """
-    # Открыть страницу диванов
-    page.goto("https://mebelmart-saratov.ru/myagkaya_mebel_v_saratove/divanyi_v_saratove")
 
-    # Найти и кликнуть на диван по названию (текстовый локатор)
-    sofa_item = page.locator(f"text={sofa_name}").first
-    sofa_item.click()
+    sofas_page = SofasPage(page, logger)
+    sofa_details_page = SofaDetailsPage(page, logger)
 
-    # Ожидание открытия новой страницы (явное ожидание URL)
-    page.wait_for_url("**/id21cf4fa_divan_lider_meshkovina_rastsvetka_na_vyibor", timeout=5000)
-
-    # Открыть характеристики дивана
-    page.click("text=Характеристики")
-
-    # Проверить наличие характеристики "Ширина" в карточке товара
-    width_row = page.locator("tr:has-text('Ширина, мм.')")
-    actual_width = width_row.locator("td:nth-child(2)").text_content().strip()
+    sofas_page.goto()
+    sofas_page.find_and_click_sofa(sofa_name)
+    sofa_details_page.wait_for_page_load(sofa_id)
+    sofa_details_page.open_characteristics()
+    actual_width = sofa_details_page.get_sofa_width()
 
     assert expected_width in actual_width, (
-        f"Ошибка: ожидаемая ширина {expected_width}, "
-        f"фактическая: {actual_width}"
+        f"Ошибка: ожидаемая ширина {expected_width}, " f"фактическая: {actual_width}"
     )
