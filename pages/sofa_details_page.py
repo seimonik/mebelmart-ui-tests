@@ -11,7 +11,7 @@ class SofaDetailsPage:
 
     def wait_for_page_load(self, sofa_id: str):
         """Ждем загрузки страницы товара"""
-        self.page.wait_for_url(f"**/{sofa_id}", timeout=10000)
+        self.page.wait_for_url(f"**/{sofa_id}", timeout=15000)
         self.logger.info("Страница товара загружена")
 
     def open_characteristics(self):

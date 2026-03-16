@@ -20,17 +20,19 @@ log_file = f"{log_dir}/test_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
 
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s',
+    format="%(asctime)s [%(levelname)s] %(name)s:%(lineno)d - %(message)s",
     handlers=[
-        logging.FileHandler(log_file, encoding='utf-8'),
-        logging.StreamHandler()  # В консоль
-    ]
+        logging.FileHandler(log_file, encoding="utf-8"),
+        logging.StreamHandler(),  # В консоль
+    ],
 )
+
 
 @pytest.fixture(scope="session")
 def logger():
     """Глобальный logger для всех тестов"""
     return logging.getLogger(__name__)
+
 
 # Автоприменяемая фикстура для output_dir (как в playwright-pytest)
 @pytest.fixture(scope="session", autouse=True)
@@ -47,6 +49,29 @@ def browser_context(browser, output_path):
     context = browser.new_context(viewport={"width": 1920, "height": 1080})
     yield context
     context.close()
+
+
+@pytest.fixture(scope="session")
+def browser_context_args():
+    """Общие настройки для изоляции потоков"""
+    return {
+        "viewport": {"width": 1920, "height": 1080},
+        "ignore_https_errors": True,
+        "java_script_enabled": True,
+    }
+
+
+@pytest.fixture(scope="function")
+def page(request, playwright, browser_context_args):
+    """Новая страница для каждого теста (изоляция)"""
+    browser = playwright.chromium.launch(headless=False)  # headed=True для отладки
+    context = browser.new_context(**browser_context_args)
+    page = context.new_page()
+
+    yield page
+
+    context.close()
+    browser.close()
 
 
 @pytest.fixture

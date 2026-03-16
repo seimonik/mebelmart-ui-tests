@@ -4,7 +4,6 @@ build-backend = "hatchling.build"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-addopts = "-v --alluredir=allure-results --screenshot=only-on-failure"
 playwright_screenshot = "only-on-failure"
 markers = [
     "smoke: smoke tests",
@@ -14,6 +13,8 @@ log_cli = true
 log_cli_level = "INFO"
 log_cli_format = "%(asctime)s [%(levelname)8s] %(message)s"
 log_cli_date_format = "%H:%M:%S"
+# Параллельность: 2 или 4 потока (половина ядер CPU) --headed - для отображения окон браузера
+addopts = "-n 2 -v -s"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-playwright", "allure-pytest", "playwright"]
