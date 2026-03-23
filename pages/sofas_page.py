@@ -5,17 +5,30 @@ class SofasPage:
     def __init__(self, page: Page, logger):
         self.logger = logger
         self.page = page
+        self.sofa_page_check = "//h1[contains(@class, 'mb-4') and normalize-space()='Диваны']"
+        self.favorites_icon = ".product-card__favorites .favorite-icon"
+        self.favorites_icon_active_class = "favorite-icon active"
+        self.icon_favorites = ".header-laptop__favorite .favorite-informer"
+        self.search_input = "input[name='query']"
+        self.product_card = ".product-card"
+        self.product_name = ".product-card__name"
+        self.buy_button = "a.btn-primary:has-text('Купить')"
+        self.product_price = ".product-card__now_price span b"
+        self.icon_cart = ".header-laptop__cart a"
 
     def goto(self):
         self.page.goto(
             "https://mebelmart-saratov.ru/myagkaya_mebel_v_saratove/divanyi_v_saratove"
         )
+        self.page.wait_for_selector(self.sofa_page_check)
 
     def filter_open(self, filter_name: str):
         self.page.locator(f".filter__title_checkbox >> text={filter_name}").click()
+        self.logger.info(f"Открыта область '{filter_name}' фильтра")
 
-    def choose(self, option: str):
-        self.page.get_by_text(option).click()
+    def choose(self, filter_name: str, option: str):
+        self.page.locator(".filter__item").filter(has_text=filter_name).get_by_role("link", name=option).click()
+        self.logger.info(f"Выбрана фильтрация по '{option}'")
 
     def apply_filter(self):
         with self.page.expect_navigation(timeout=10000):
@@ -35,16 +48,11 @@ class SofasPage:
     def add_product_to_favorites_by_name(self, product_name: str):
         """Находит товар по названию и добавляет в избранное"""
         # Находим карточку товара по тексту в заголовке
-        product_card = self.page.locator(".col-sm-6.col-lg-4").filter(
-            has=self.page.get_by_text(product_name, exact=True)
-        )
-
-        # Получаем название для логов
-        actual_name = product_card.locator(".product-card__name b a").inner_text()
-        self.logger.info(f"Найден товар: '{actual_name}'")
+        product_card = self.page.locator(".product-card").filter(has_text=product_name).first
+        self.logger.info(f"Найден товар: '{product_name}'")
 
         # Иконка избранного внутри карточки
-        favorites_icon = product_card.locator(".product-card__favorites .favorite-icon")
+        favorites_icon = product_card.locator(self.favorites_icon)
 
         # Сохраняем состояние до клика
         was_active_before = favorites_icon.get_attribute("class") or ""
@@ -55,139 +63,59 @@ class SofasPage:
 
         # Проверяем изменение состояния
         was_active_after = favorites_icon.get_attribute("class") or ""
-        expect(favorites_icon).to_have_class("favorite-icon active")
+        expect(favorites_icon).to_have_class(self.favorites_icon_active_class)
         self.logger.info(f"Состояние иконки после: {was_active_after}")
         self.logger.info("Товар добавлен в Избранное")
-
-        return actual_name
 
     def go_to_favorites(self):
         """Переход в раздел Избранное и ожидание загрузки"""
         self.logger.info("Переход в раздел 'Избранное'")
 
-        favorites_link = self.page.locator(
-            ".header-laptop__favorite .favorite-informer"
-        )
+        favorites_btn = self.page.locator(self.icon_favorites)
 
-        expect(favorites_link).to_be_visible()
+        expect(favorites_btn).to_be_visible()
         self.logger.info("Кнопка 'Избранное' найдена")
 
-        with self.page.expect_navigation():
-            favorites_link.click()
-
-        expect(self.page.locator(".page-favorite")).to_be_visible(timeout=10000)
-        self.logger.info("Страница Избранное загружена")
+        favorites_btn.click()
 
     def search_product(self, search_query: str):
         """Поиск товара по названию"""
-        self.logger.info(f"Поиск: '{search_query}'")
-
-        search_input = self.page.locator(
-            'input.searchInput.border.border-light.rounded-right.form-control.pr-5.flex-grow-1[name="query"]'
-        )
-
-        search_input.click()
+        search_input = self.page.locator(self.search_input).locator("visible=true")
         search_input.fill(search_query)
         self.logger.info(f"Введен запрос: '{search_query}'")
+        search_input.press("Enter")
 
-        # Нажимаем Enter
-        with self.page.expect_navigation():
-            search_input.press("Enter")
+    def add_product_to_cart(self, product_name: str):
+        self.logger.info(f"Добавление товара '{product_name}' в корзину")
+    
+        # Находим конкретную карточку по тексту названия
+        target_card = self.page.locator(self.product_card).filter(
+            has=self.page.locator(self.product_name, has_text=product_name)
+        ).first
+    
+        # Кликаем по кнопке "Купить" в карточке
+        target_card.locator(self.buy_button).click()
+    
+        self.logger.info(f"Нажата кнопка 'Купить' для '{product_name}'")
+    
+    def get_product_price(self, product_name: str) -> str:
+        """Получить цену товара по его названию"""
+        card = self.page.locator(self.product_card).filter(
+            has=self.page.locator(self.product_name, has_text=product_name)
+        ).first
 
-        expect(self.page.locator(".page-search.mb-5")).to_be_visible(timeout=10000)
-        self.logger.info("Результаты поиска загружены")
-
-    def verify_search_first_result(self, expected_word: str):
-        """Проверяет, что первый результат содержит ожидаемое слово"""
-        first_product_card = self.page.locator(".col-md-4.mb-4").first
-        expect(first_product_card).to_be_visible()
-
-        first_title_locator = first_product_card.locator(".product-card__name b a")
-        first_title = first_title_locator.inner_text()
-
-        self.logger.info(f"Первый результат: '{first_title}'")
-
-        assert (
-            expected_word.lower() in first_title.lower()
-        ), f"'{expected_word}' не найден в первом результате: '{first_title}'"
-
-        self.logger.info(f"Первый результат содержит '{expected_word}'")
-        return first_title
-
-    def add_first_product_to_cart(self):
-        """Добавляет первый товар в корзину"""
-        self.logger.info("Добавление первого товара в корзину")
-
-        first_card = self.page.locator(".col-sm-6.col-lg-4.mb-4").first
-
-        price_text = first_card.locator(".product-card__now_price span b").inner_text()
-        cart_price = int(price_text.replace(" ", "").replace("₽", ""))
-
-        actual_name = first_card.locator(".product-card__name b a").inner_text()
-
-        self.logger.info(f"Товар: '{actual_name}', Цена: {cart_price}₽")
-
-        buy_button = first_card.locator("a.btn.btn-primary.btn-block")
-        expect(buy_button).to_be_visible()
-
-        buy_button.click()
-        self.page.wait_for_timeout(1500)
-
-        # Кнопка "В корзину" на странице товара
-        add_to_cart_btn = self.page.locator('a.btnToCart:has-text("В корзину")')
-        expect(add_to_cart_btn).to_be_visible()
-
-        add_to_cart_btn.click()
-        self.page.wait_for_timeout(2000)
-
-        # Авто-OK для всех confirm
-        self.page.on("dialog", lambda dialog: dialog.accept())
-
-        self.logger.info("Первый товар в корзине")
-        return actual_name, cart_price
+        card.wait_for(state="visible")
+        
+        raw_price = card.locator(self.product_price).last.inner_text()
+        clean_price = raw_price.replace("\xa0", "").replace(" ", "").strip()
+        
+        self.logger.info(f"Цена товара '{product_name}': {clean_price}")
+        return clean_price
 
     def go_to_cart(self):
         """Переход в корзину"""
         self.logger.info("Переход в корзину")
 
-        cart_link = self.page.locator(".header-laptop__cart a")
+        cart_link = self.page.locator(self.icon_cart)
         expect(cart_link).to_be_visible()
-
-        with self.page.expect_navigation():
-            cart_link.click()
-
-        expect(self.page.locator(".container.mb-5")).to_be_visible()
-
-    def verify_cart_content(self, expected_name: str, expected_price: int):
-        """Проверяет товар и цену в корзине по вашей HTML-структуре"""
-        expect(self.page.locator(".list-group")).to_be_visible()
-
-        cart_item = self.page.locator(".list-group-item a.font-weight-bold").filter(
-            has=self.page.get_by_text(expected_name)
-        )
-        expect(cart_item).to_be_visible()
-        self.logger.info(f"'{expected_name}' найден в корзине")
-
-        cart_price_elem = self.page.locator(".list-group-item .col-md-2.py-2").first
-        cart_price_text = cart_price_elem.inner_text().strip()
-
-        cart_price = int("".join(filter(str.isdigit, cart_price_text)))
-
-        self.logger.info(f"Корзина: '{cart_price_text}' → {cart_price}₽")
-
-        assert cart_price == expected_price, (
-            f"Цены не совпадают\n"
-            f"Каталог: {expected_price}₽\n"
-            f"Корзина:  {cart_price}₽\n"
-            f"Элемент: '{cart_price_text}'"
-        )
-
-        # Итоговая сумма должна совпадать с ценой 1 товара
-        total_price_elem = self.page.locator('xpath=//h2[contains(text(), "Итого:")]')
-        # total_price_elem = self.page.locator('h2: has-text("Итого: ")').first
-        total_text = total_price_elem.inner_text()
-        total_price = int("".join(filter(str.isdigit, total_text)))
-
-        assert (
-            total_price == expected_price
-        ), f"Итоговая сумма не совпадает!\nОжидалось: {expected_price}₽\nПолучено: {total_price}₽"
+        cart_link.click()

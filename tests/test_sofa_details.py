@@ -1,3 +1,4 @@
+import allure
 import pytest
 from playwright.sync_api import Page
 from pages.sofas_page import SofasPage
@@ -5,28 +6,20 @@ from pages.sofa_details_page import SofaDetailsPage
 
 
 @pytest.mark.parametrize(
-    "sofa_name, expected_width, sofa_id",
+    "sofa_name, expected_width",
     [
-        (
-            "Диван Лидер",
-            "2050",
-            "id21cf4fa_divan_lider_meshkovina_rastsvetka_na_vyibor", # id из url'а
-        ),
-        (
-            "Диван разные расцветки",
-            "2200",
-            "idbf109a6_evroknijka_vyikatnaya_iskusstvennaya_zamsha_v-d"
-        )
+        ("Диван Лидер", "2050"),
+        ("Диван разные расцветки", "2200"),
+        ("Диван Мешковина-3", "1400"),
     ],
 )
-def test_sofa_details(
-    page: Page, logger, sofa_name: str, expected_width: str, sofa_id: str
-):
+@allure.title("Проверка характеристики ширины в карточке '{sofa_name}'")
+def test_sofa_details(page: Page, logger, sofa_name: str, expected_width: str):
     """
-    Проверка деталей товара в карточке дивана.
+    2. Проверка деталей товара в карточке
     Шаги:
     1. Открыть раздел "Диваны".
-    2. Найти и кликнуть на диван "Диван Бостон".
+    2. Найти и кликнуть на диван.
     3. Проверить характеристики (ширина) в карточке товара.
     4. Убедиться, что значение совпадает с ожидаемым.
     """
@@ -36,7 +29,6 @@ def test_sofa_details(
 
     sofas_page.goto()
     sofas_page.find_and_click_sofa(sofa_name)
-    sofa_details_page.wait_for_page_load(sofa_id)
     sofa_details_page.open_characteristics()
     actual_width = sofa_details_page.get_sofa_width()
 

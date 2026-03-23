@@ -62,24 +62,24 @@ def browser_context_args():
 
 
 @pytest.fixture(scope="function")
-def page(request, playwright, browser_context_args):
-    """Новая страница для каждого теста (изоляция)"""
-    browser = playwright.chromium.launch(headless=False)  # headed=True для отладки
+def page(playwright, browser_context_args):
+    # Запуск браузера
+    browser = playwright.chromium.launch(headless=True)
+    
+    # Создаем контекст и указываем папку для видео
+    # context = browser.new_context(
+    #     record_video_dir="test-results/",
+    #     record_video_size={"width": 1280, "height": 720}
+    # )
     context = browser.new_context(**browser_context_args)
+    
+    # Создаем страницу
     page = context.new_page()
 
     yield page
 
     context.close()
     browser.close()
-
-
-@pytest.fixture
-def page(browser_context):
-    page = browser_context.new_page()
-    yield page
-    page.close()
-
 
 @pytest.fixture
 def divany_page(page: Page):
@@ -98,7 +98,7 @@ def pytest_runtest_makereport(item, call):
                 "test-results/test-failed.png",
                 "failure_screenshot",
                 attachment_type=allure.attachment_type.PNG,
-            )
+            )   
 
 
 @pytest.hookimpl(hookwrapper=True)
